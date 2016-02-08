@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+import subprocess
+import json
+import sys
+import tabulate
+
+def cf_curl(url):
+    """Calls given url, parses json, returns json doc."""
+    # this is actually a terrible way to do this, as cf curl doesn't
+    # have any way to fail on non-200
+    api_output = subprocess.check_output(['cf', 'curl', url]) 
+    doc = json.loads(api_output) 
+    if doc == None:
+        sys.stderr.write(api_output) 
+        raise ValueError
+    return doc
+
+def resolve_entity_attr(url, attr="name"):
+    """Given a cf url, resolve the name of the entity
+
+    e.g. name = resolve_entity_attr('/v2/service_plans/1811bcda-ef6c-4ae0-adda-a5807ef198c9')"""
+    doc = cf_curl(url)
+    return doc['entity'][attr]
+
+def cf_plan(url):
+    doc = cf_curl(url)
+    planname = doc['entity']['name']
+    servicename = resolve_entity_attr(doc['entity']['service_url'], 'label')
+    return (planname, servicename)
+
+def cf_space(url):
+    """Given a URL returns (spacename, orgname)"""
+    doc = cf_curl(url)
+    spacename = doc['entity']['name']
+    orgname = resolve_entity_attr(doc['entity']['organization_url'])
+    return (spacename, orgname)
+
+def service_instances():
+    """Returns a list of dicts of service instances for current CF org"""
+    service_instances = cf_curl('/v2/service_instances')
+    
+    output = []
+    for resource in service_instances['resources']:
+        service_instance = resource['entity'] 
+        s = {}
+        s['name'] = service_instance['name']
+        (s['plan'],s['service']) = cf_plan(service_instance['service_plan_url'])
+        (s['space'], s['org']) = cf_space(service_instance['space_url'])
+        
+        output.append(s)
+    
+    return output       
+
+if __name__ == '__main__':
+    instances = service_instances()    
+    print tabulate.tabulate(instances, headers='keys')
