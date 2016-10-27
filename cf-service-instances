@@ -38,6 +38,7 @@ def cf_space(url):
 
 def service_instances():
     """Returns a list of dicts of service instances for current CF org"""
+    # TODO: This needs to use the pagination implementation from cf-apps
     service_instances = cf_curl('/v2/service_instances')
     
     output = []
@@ -53,5 +54,6 @@ def service_instances():
     return output       
 
 if __name__ == '__main__':
+    sys.stderr.write('WARNING: will only output first 50 results\n')
     instances = service_instances()    
     print tabulate.tabulate(instances, headers='keys')
