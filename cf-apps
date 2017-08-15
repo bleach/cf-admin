@@ -75,15 +75,14 @@ class CloudFoundry:
     def apps(self):
         """Returns a list of dicts of service instances for current CF org"""
         apps = self.api_call('/v2/apps')
+
+        fields = ['name', 'org', 'space', 'buildpack', 'detected_buildpack']
         
-        output = []
+        output = [fields]
         for resource in apps['resources']:
             app = resource['entity'] 
-            s = {}
-            s['name'] = app['name']
-            (s['space'], s['org']) = self.space(app['space_url'])
-            s['buildpack'] = app['buildpack']
-            s['detected_buildpack'] = app['detected_buildpack']
+            (app['space'], app['org']) = self.space(app['space_url'])
+            s = [app[k] for k in fields]
             
             output.append(s)
         
@@ -92,4 +91,4 @@ class CloudFoundry:
 if __name__ == '__main__':
     cf = CloudFoundry()
     apps = cf.apps()    
-    print tabulate.tabulate(apps, headers='keys')
+    print tabulate.tabulate(apps, headers='firstrow')
