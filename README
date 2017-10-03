@@ -8,3 +8,10 @@ pip install -r requirements.txt
 USING
 
 . .venv/bin/activate
+
+BUGS/TODO
+
+- cf-app-crashes: show the org name if a space has been deleted 
+- In general, testing against a range of API responses would be useful:
+  - that our pagination code works
+  - that when errors occur we deal with the situation well

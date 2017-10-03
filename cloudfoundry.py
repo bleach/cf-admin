@@ -23,11 +23,10 @@ class CloudFoundry:
     def api_call(self, url):
         """make all the API calls needed, and return a doc"""
         api_result = doc = self.curl(url)
-        while doc['next_url'] is not None:
+        while doc['total_pages'] > 1 and doc['next_url'] is not None:
             doc = self.curl(doc['next_url'])
             api_result['resources'] += doc['resources']
         return api_result
-        
 
     def resolve_entity_attr(self, url, attr="name"):
         """Given a cf url, resolve the name of the entity
@@ -50,8 +49,17 @@ class CloudFoundry:
     def space(self, url):
         """Given a URL returns (spacename, orgname)"""
         doc = self.curl(url)
-        spacename = doc['entity']['name']
-        orgname = self.resolve_entity_attr(doc['entity']['organization_url'])
+        try:
+            spacename = doc['entity']['name']
+        except KeyError:
+            if doc.has_key('error_code'):
+                spacename = doc['error_code']
+            else: 
+                raise ValueError
+        try:
+            orgname = self.resolve_entity_attr(doc['entity']['organization_url'])
+        except KeyError:
+            orgname = 'CF-OrganizationNotFound'
         return (spacename, orgname)
 
     def service_instances(self):
