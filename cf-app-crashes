@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+from cloudfoundry import CloudFoundry
+import datetime
+import tabulate
+
+def events(cf, queryfilter):
+    events = cf.api_call('/v2/events?q=%s' % queryfilter)
+
+    fields = ['created_at', 'app_name', 'org', 'space', 'exit_description']
+
+    output = [fields]
+    for resource in events['resources']:
+        event = resource['entity']
+        (event['space'], event['org']) = cf.space('/v2/spaces/%s' % event['space_guid'])
+
+        event['created_at'] = resource['metadata']['created_at']
+        event['exit_description'] = event['metadata']['exit_description']
+        event['app_name'] = event['actor_name']
+        s = [event[k] for k in fields]
+
+        output.append(s)
+
+    return output
+
+cf = CloudFoundry()
+
+start = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+events = events(cf, 'type:app.crash&q=timestamp>%sZ' % start.isoformat())
+print tabulate.tabulate(events, headers='firstrow')
+
