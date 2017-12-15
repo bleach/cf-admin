@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+#
+# Extract the username and org for every user in this CF.
+# 
+# Assumes that if the username is missing they're not interesting
+#
+# RETURNS DUPES
+
+import csv
+import sys
+from cloudfoundry import CloudFoundry
+
+def org_nested_users(cf):
+    orgs = cf.api_call('/v2/organizations')
+
+    user_mapping = []
+    for resource in orgs['resources']:
+        org = resource['entity']
+        org_name = org['name']
+
+        org_users = extract_users(cf, org['users_url'])
+        user_mapping += [[user, org_name] for user in org_users]
+
+        spaces = cf.api_call(org['spaces_url'])
+        space_users = []
+        for space in spaces['resources']: 
+            for role in ['developers', 'managers', 'auditors']:
+               space_users += extract_users(cf, space['entity']['%s_url' % role])
+        user_mapping += [[user, org_name] for user in space_users]
+
+    return user_mapping
+    
+
+def extract_users(cf, url):
+    page = cf.api_call(url)
+
+    users = []
+    for resource in page['resources']:
+        user = resource['entity']
+        try:
+            username = user['username'] 
+        except KeyError:
+            # not interested in users without a username
+            continue
+        users.append(username)
+
+    return users
+
+cf = CloudFoundry()
+writer = csv.writer(sys.stdout)
+writer.writerows(org_nested_users(cf))
